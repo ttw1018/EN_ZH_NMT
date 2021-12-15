@@ -1,3 +1,4 @@
+from typing import ForwardRef
 import torch
 from torch import nn
 
@@ -9,3 +10,6 @@ class NMT(nn.Module):
         self.hidden_size = hidden_size
         self.vocab = vocab
         self.encode = nn.LSTM()
+
+    def forward(self):
+        pass
