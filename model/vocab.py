@@ -109,14 +109,18 @@ def read_corpus(file_path):
     src_sents = []
     tgt_sents = []
     with open(file_path, 'r') as f:
+        cnt = 100
         while True:
             line = f.readline()
             if not line:
                 break
             line = json.loads(line)
-            src_sents.append([line["english"]])
-            tgt_sents.append([line["chinese"]])
-    vocab = Vocab.build(src_sents, tgt_sents, 10000, 2)
+            src_sents.append(["<s>" + line["english"] + "<\s>"])
+            tgt_sents.append(["<s>" + line["chinese"] + "<\s>"])
+            cnt = cnt - 1
+            if cnt <= 0:
+                break
+    return src_sents, tgt_sents
 
 if __name__ == '__main__':
     read_corpus("/Users/tianwentang/Datasets/translation2019zh/translation2019zh_train.json")
