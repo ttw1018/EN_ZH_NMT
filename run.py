@@ -4,6 +4,7 @@ import torch
 from model.vocab import read_corpus
 import time
 from utils import batch_iter
+from model.vocab import Vocab
 
 
 def parser():
@@ -24,8 +25,10 @@ def test(argv):
 
 def train(argv):
     train_data = read_corpus(argv['data-path'])
-    batch_size = argv['batch-size']
-    valid_iter = argv['valid-iter']
+    batch_size = int(argv['batch-size'])
+    valid_iter = int(argv['valid-iter'])
+
+    vocab = Vocab.load("vocab.json")
     model = NMT(int(argv["embed-size"]), int(argv["hidden-size"]), vocab, float(argv["dropout-rate"]))
     model.train()
 
@@ -33,13 +36,15 @@ def train(argv):
 
     print("device: ", device)
 
-    epoches = argv['epoches']
+    epoches = int(argv['epoches'])
 
     epoch = 0
     while epoch < epoches:
         epoch = epoch + 1
-
+        cnt = 0
         for src_sents, tgt_sents in batch_iter(train_data, batch_size):
+            pass
+
 
 
 

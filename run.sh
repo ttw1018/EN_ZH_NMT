@@ -1,1 +1,2 @@
 python3 run.py --train --deviece=cuda --batch-size=64 --data-path=/Users/tianwentang/Datasets/translation2019zh/translation2019zh_train.json --valid-iter=100 --embed-size=1000 --dropout-rate=0.1 --hidden-size=100 --epoches=50
+python3 run.py --train --deviece=cuda --batch-size=64 --data-path=E:\Datasets\translation2019zh\translation2019zh_train.json --valid-iter=100 --embed-size=1000 --dropout-rate=0.1 --hidden-size=100 --epoches=50

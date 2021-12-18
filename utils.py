@@ -6,5 +6,7 @@ def pad_sents(sents, pad_tokens):
 
 
 def batch_iter(data, batch_size):
-    for i in range(0, len(data), batch_size):
-        yield data[i : min(len(data), i + batch_size)]
+    assert(len(data[0]) == len(data[1]))
+    total = len(data[0])
+    for i in range(0, total, batch_size):
+        yield data[0][i : min(total, i + batch_size)], data[1][i : min(total, i + batch_size)]
