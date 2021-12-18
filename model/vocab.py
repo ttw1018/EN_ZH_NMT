@@ -4,6 +4,8 @@ import torch
 from torch import nn
 from collections import Counter
 from itertools import chain
+import os
+import sentencepiece as smp
 
 from utils import pad_sents
 
@@ -78,6 +80,7 @@ class VocabEntry(object):
             vocab_entry.add(word)
         return vocab_entry
 
+
 class Vocab(object):
     def __init__(self, src_vocab, tgt_vocab):
         self.src = src_vocab
@@ -93,11 +96,11 @@ class Vocab(object):
         return Vocab(src, tgt)
 
     def save(self, file_path):
-        json.dump(dict(src_word2id=self.src.word2id, tgt_word2id=self.tgt.word2id), open(file_path, 'W'), indent=2)
+        json.dump(dict(src_word2id=self.src.word2id, tgt_word2id=self.tgt.word2id), open(file_path, 'w'), indent=2)
 
     @staticmethod
     def load(file_path):
-        entry = json.load(file_path)
+        entry = json.load(open(file_path, "r"))
         src_word2id = entry["src_word2id"]
         tgt_word2id = entry["tgt_word2id"]
         return Vocab(VocabEntry(src_word2id), VocabEntry(tgt_word2id))
@@ -105,22 +108,38 @@ class Vocab(object):
     def __repr__(self):
         return 'Vocab(source %d words, target %d words)' % (len(self.src), len(self.tgt))
 
+
 def read_corpus(file_path):
     src_sents = []
     tgt_sents = []
-    with open(file_path, 'r') as f:
-        cnt = 100
+    with open(file_path, 'r', encoding='utf8') as f:
+        cnt = 5000
         while True:
             line = f.readline()
             if not line:
                 break
             line = json.loads(line)
-            src_sents.append(["<s>" + line["english"] + "<\s>"])
+            src_sents.append([line["english"]])
             tgt_sents.append(["<s>" + line["chinese"] + "<\s>"])
             cnt = cnt - 1
             if cnt <= 0:
                 break
+    # if not os.path.exists("vocab.json"):
+    # Vocab.build(src_sents, tgt_sents, 10000, 2).save("vocab.json")
     return src_sents, tgt_sents
 
+
+def get_vocab_list(file_path, source, vocab_size):
+    smp.SentencePieceTrainer.Train(input=file_path, model_prefix=source, vocab_size=vocab_size)
+    sp = smp.SentencePieceProcessor()
+    sp.Load("{}.model".format(source))
+    print(type(sp))
+    sp_list = [sp.IdToPiece(id) for id in range(vocab_size)]
+    print(sp_list[:20])
+    return sp_list
+
 if __name__ == '__main__':
-    read_corpus("/Users/tianwentang/Datasets/translation2019zh/translation2019zh_train.json")
+    # read_corpus("/Users/tianwentang/Datasets/translation2019zh/translation2019zh_train.json")
+    # read_corpus("E:\Datasets\translation2019zh\translation2019zh_train.json")
+
+    get_vocab_list("E:\\Datasets\\translation2019zh\\translation2019zh_train.json", "source", 10000)
