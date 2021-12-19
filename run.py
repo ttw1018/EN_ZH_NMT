@@ -5,6 +5,7 @@ from model.vocab import read_corpus
 import time
 from utils import batch_iter
 from model.vocab import Vocab
+from torch import nn
 
 
 def parser():
@@ -28,7 +29,9 @@ def train(argv):
     batch_size = int(argv['batch-size'])
     valid_iter = int(argv['valid-iter'])
 
+    print("loading vocab")
     vocab = Vocab.load("vocab.json")
+    print("load vocab success")
     model = NMT(int(argv["embed-size"]), int(argv["hidden-size"]), vocab, float(argv["dropout-rate"]))
     model.train()
 
@@ -36,18 +39,17 @@ def train(argv):
 
     print("device: ", device)
 
-    epoches = int(argv['epoches'])
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
 
+    epoches = int(argv['epoches'])
     epoch = 0
     while epoch < epoches:
         epoch = epoch + 1
         cnt = 0
         for src_sents, tgt_sents in batch_iter(train_data, batch_size):
-            pass
-
-
-
-
+            optimizer.zero_grad()
+            loss = -model(src_sents, tgt_sents)
+            print(loss)
 
 
 def main():
@@ -61,5 +63,4 @@ def main():
 
 
 if __name__ == "__main__":
-    a = dict()
     main()

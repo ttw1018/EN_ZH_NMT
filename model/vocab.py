@@ -1,5 +1,6 @@
 import json
 
+import nltk
 import torch
 from torch import nn
 from collections import Counter
@@ -71,11 +72,13 @@ class VocabEntry(object):
     def from_corpus(corpus, size, freq_cutoff=2):
         vocab_entry = VocabEntry()
         word_freq = Counter(chain(*corpus))
+        for k, v in word_freq.items():
+            print(k, v)
+            break
         valid_words = [k for k, v in word_freq.items() if v >= freq_cutoff]
         print("number of word types: {}, number of words w / frequency {}: {}".format(len(word_freq), freq_cutoff,
                                                                                       len(valid_words)))
         top_k_words = sorted(valid_words, key=lambda w: word_freq[w], reverse=True)[:size]
-
         for word in top_k_words:
             vocab_entry.add(word)
         return vocab_entry
@@ -112,20 +115,17 @@ class Vocab(object):
 def read_corpus(file_path):
     src_sents = []
     tgt_sents = []
-    with open(file_path, 'r', encoding='utf8') as f:
-        cnt = 5000
-        while True:
-            line = f.readline()
-            if not line:
-                break
-            line = json.loads(line)
-            src_sents.append([line["english"]])
-            tgt_sents.append(["<s>" + line["chinese"] + "<\s>"])
-            cnt = cnt - 1
-            if cnt <= 0:
-                break
-    # if not os.path.exists("vocab.json"):
-    # Vocab.build(src_sents, tgt_sents, 10000, 2).save("vocab.json")
+    fin = open(file_path, 'r', encoding='utf').readlines()
+    cnt = 100
+    for f in fin:
+        line = json.loads(f)
+        src = nltk.word_tokenize(line["english"])
+        tgt = nltk.word_tokenize(line["chinese"])
+        src_sents.append(src)
+        tgt_sents.append(["<s>"] + tgt + ["<\s>"])
+        cnt = cnt - 1
+        if cnt <= 0:
+            break
     return src_sents, tgt_sents
 
 
@@ -139,7 +139,11 @@ def get_vocab_list(file_path, source, vocab_size):
     return sp_list
 
 if __name__ == '__main__':
-    # read_corpus("/Users/tianwentang/Datasets/translation2019zh/translation2019zh_train.json")
     # read_corpus("E:\Datasets\translation2019zh\translation2019zh_train.json")
+    # get_vocab_list("E:\\Datasets\\translation2019zh\\translation2019zh_train.json", "source", 10000)
 
-    get_vocab_list("E:\\Datasets\\translation2019zh\\translation2019zh_train.json", "source", 10000)
+    src_sents, tgt_sents = read_corpus("/Users/tianwentang/Datasets/translation2019zh/translation2019zh_train.json")
+    print(len(src_sents))
+    vocab = Vocab.build(src_sents, tgt_sents, 10000, 3)
+    print("generate vocabulary, source %d words, target word %d" % (len(vocab.src), len(vocab.tgt)))
+    vocab.save("vocab.json")
