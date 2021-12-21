@@ -14,16 +14,18 @@ class NMT(nn.Module):
         self.vocab = vocab
         self.encoder = nn.LSTM(embed_size, hidden_size, bidirectional=True)
         self.decoder = nn.LSTMCell(hidden_size + embed_size, hidden_size)
-        self.h_projection = nn.Linear(2*self.hidden_size, self.hidden_size)
-        self.c_projection = nn.Linear(2*self.hidden_size, hidden_size)
-        self.att_projection = nn.Linear(2*self.hidden_size, self.hidden_size)
-        self.combined_output_projection = nn.Linear(self.hidden_size*3,  hidden_size)
+        self.h_projection = nn.Linear(2 * self.hidden_size, self.hidden_size)
+        self.c_projection = nn.Linear(2 * self.hidden_size, hidden_size)
+        self.att_projection = nn.Linear(2 * self.hidden_size, self.hidden_size)
+        self.combined_output_projection = nn.Linear(
+            self.hidden_size * 3, hidden_size)
         self.target_vocab_projection = nn.Linear(hidden_size, len(vocab.tgt))
         self.dropout = nn.Dropout(dropout_rate)
 
     def encode(self, source_padded, source_lengths):
         X = self.model_embedding.source(source_padded)
-        packed_seq = pack_padded_sequence(X, source_lengths, enforce_sorted=False, batch_first=True)
+        packed_seq = pack_padded_sequence(
+            X, source_lengths, enforce_sorted=False, batch_first=True)
         enc_hidden, (last_hidden, last_cell) = self.encoder(packed_seq)
         enc_hidden, _ = pad_packed_sequence(enc_hidden, batch_first=True)
         init_decode_hidden = self.h_projection(
@@ -44,8 +46,8 @@ class NMT(nn.Module):
         for y_t in Y_ts:
             y_t = y_t.squeeze(1)
             ybar_t = torch.cat((y_t, o_prev), 1)
-
-            dec_state, o_prev, _ = self.step(ybar_t, dec_state, enc_hidden, enc_hidden_proj, enc_masks)
+            dec_state, o_prev, _ = self.step(
+                ybar_t, dec_state, enc_hidden, enc_hidden_proj, enc_masks)
             combined_outputs.append(o_prev)
         combined_outputs = torch.stack(combined_outputs)
         return combined_outputs
@@ -71,24 +73,20 @@ class NMT(nn.Module):
         target_padded = self.vocab.tgt.to_input_tensor(target)
         enc_hidden, dec_init_state = self.encode(source_padded, source_lengths)
         enc_masks = self.generate_sent_masks(enc_hidden, source_lengths)
-        combined_outputs = self.decode(enc_hidden, enc_masks, dec_init_state, target_padded)
-        P = F.log_softmax(self.target_vocab_projection(combined_outputs), -1)
-        target_masks = (target_padded != self.vocab.tgt['<pad>']).float()
-        i = target_padded[1:].unsqueeze(-1)
-        print(i.shape)
-        print(P.shape)
-        j = torch.gather(P, index=i, dim=-1)
-        target_gold_words_log_prob = j.squeeze(-1) * target_masks[:,1:]
-        scores = target_gold_words_log_prob.sum(dim=0)
-        print(scores.shape)
-        return scores
-
-
+        combined_outputs = self.decode(
+            enc_hidden, enc_masks, dec_init_state, target_padded)
+        P = self.target_vocab_projection(combined_outputs)
+        P = P.permute(1, 0, 2)
+        P = P.float()
+        source_padded = source_padded.float()
+        print(P.dtype, source_padded.dtype)
+        loss = nn.CrossEntropyLoss(P, source_padded)
+        print(loss)
+        return P
 
     def generate_sent_masks(self, enc_hidden, source_lengths):
-        enc_masks = torch.zeros(enc_hidden.size(0), enc_hidden.size(1), dtype=torch.float)
+        enc_masks = torch.zeros(enc_hidden.size(
+            0), enc_hidden.size(1), dtype=torch.float)
         for e_id, src_len in enumerate(source_lengths):
-            enc_masks[e_id, src_len:] = 1
+            enc_masks[e_id, 1:src_len:] = 1
         return enc_masks
-
-

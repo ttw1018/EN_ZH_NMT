@@ -48,9 +48,12 @@ def train(argv):
         cnt = 0
         for src_sents, tgt_sents in batch_iter(train_data, batch_size):
             optimizer.zero_grad()
-            loss = -model(src_sents, tgt_sents)
-            print(loss)
-
+            pred = model(src_sents, tgt_sents)
+            # print(target_padded.shape)
+            # print(pred.shape)
+            # loss = nn.CrossEntropyLoss(pred, tgt_sents)
+            break
+        break
 
 def main():
     argv = parser()
@@ -60,7 +63,6 @@ def main():
         test(argv)
     else:
         raise "wrong command"
-
 
 if __name__ == "__main__":
     main()
