@@ -3,11 +3,13 @@ from torch import nn
 from model.embedding_model import EmbeddingModel
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 import torch.nn.functional as F
+import sys
 
 
 class NMT(nn.Module):
-    def __init__(self, embed_size, hidden_size, vocab, dropout_rate=0.1):
+    def __init__(self, embed_size, hidden_size, vocab, dropout_rate=0.1, deviece="cpu"):
         super(NMT, self).__init__()
+        self.device = deviece
         self.model_embedding = EmbeddingModel(embed_size, vocab)
         self.embed_size = embed_size
         self.hidden_size = hidden_size
@@ -69,24 +71,23 @@ class NMT(nn.Module):
 
     def forward(self, source, target):
         source_lengths = [len(s) for s in source]
-        source_padded = self.vocab.src.to_input_tensor(source, "cuda")
-        target_padded = self.vocab.tgt.to_input_tensor(target, "cuda")
+        source_padded = self.vocab.src.to_input_tensor(source, self.device)
+        target_padded = self.vocab.tgt.to_input_tensor(target, self.device)
         enc_hidden, dec_init_state = self.encode(source_padded, source_lengths)
         enc_masks = self.generate_sent_masks(enc_hidden, source_lengths)
         combined_outputs = self.decode(
             enc_hidden, enc_masks, dec_init_state, target_padded)
         P = self.target_vocab_projection(combined_outputs)
-        P = torch.permute(P, (1, 2, 0))
+        P = P.permute(1, 2, 0)
         loss = nn.CrossEntropyLoss()(P, target_padded)
         return loss
 
     def generate_sent_masks(self, enc_hidden, source_lengths):
         enc_masks = torch.zeros(enc_hidden.size(
-            0), enc_hidden.size(1), dtype=torch.float, device="cuda")
+            0), enc_hidden.size(1), dtype=torch.float, device=self.device)
         for e_id, src_len in enumerate(source_lengths):
             enc_masks[e_id, 1:src_len:] = 1
         return enc_masks
-
 
     @staticmethod
     def load(model_path: str):
@@ -101,7 +102,6 @@ class NMT(nn.Module):
 
         return model
 
-
     def save(self, path: str):
         """ Save the odel to a file.
         @param path (str): path to the model
@@ -109,8 +109,8 @@ class NMT(nn.Module):
         print('save model parameters to [%s]' % path, file=sys.stderr)
 
         params = {
-            'args': dict(embed_size=self.model_embeddings.embed_size, hidden_size=self.hidden_size,
-                         dropout_rate=self.dropout_rate),
+            'args': dict(embed_size=self.embed_size, hidden_size=self.hidden_size,
+                         dropout_rate=self.dropout_rate, device=self.device),
             'vocab': self.vocab,
             'state_dict': self.state_dict()
         }

@@ -91,6 +91,7 @@ class Vocab(object):
 
     @staticmethod
     def build(src_sents, tgt_sents, vocab_size, freq_cutoff):
+        return Vocab(src_sents, tgt_sents)
         print('init source vocab')
         src = VocabEntry.from_corpus(src_sents, vocab_size, freq_cutoff)
         print('init target vocab')
@@ -129,16 +130,34 @@ def read_corpus(file_path):
             break
     return src_sents, tgt_sents
 
-
 def get_vocab_list(file_path, source, vocab_size):
     smp.SentencePieceTrainer.Train(input=file_path, model_prefix=source, vocab_size=vocab_size)
     sp = smp.SentencePieceProcessor()
     sp.Load("{}.model".format(source))
     sp_list = [sp.IdToPiece(id) for id in range(vocab_size)]
+    print(sp_list[:10])
     return sp_list
+
+def convert_json(filename):
+    src_sents = []
+    tgt_sents = []
+    with open(filename, "r", encoding="utf-8") as f:
+        lines = f.readlines()
+        for line in lines:
+            line = json.loads(line)
+            src_sents.append(line['english'])
+            tgt_sents.append(line['chinese'])
+    with open("/Users/tianwentang/Datasets/translation2019zh/en.txt", "w", encoding="utf-8") as f:
+        f.write(str.join("\n", src_sents))
+
+    with open("/Users/tianwentang/Datasets/translation2019zh/zh.txt", "w", encoding="utf-8") as f:
+        f.write(str.join("\n", tgt_sents))
+
 
 if __name__ == '__main__':
     src_sent = get_vocab_list("E://Datasets//translation2019zh//en.txt", "source", 20000)
     tgt_sent = get_vocab_list("E://Datasets//translation2019zh//zh.txt", "target", 20000)
-    Vocab = Vocab.build(src_sent, tgt_sent, 10000, 2)
+    # src_sent = get_vocab_list("/Users/tianwentang/Datasets/translation2019zh/en.txt", "source", 40000)
+    # tgt_sent = get_vocab_list("/Users/tianwentang/Datasets/translation2019zh/zh.txt", "target", 40000)
+    Vocab = Vocab.build(src_sent, tgt_sent, 40000, 2)
     Vocab.save("vocab.json")

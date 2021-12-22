@@ -6,16 +6,15 @@ import time
 from utils import batch_iter
 from model.vocab import Vocab
 from torch import nn
+from torch import cuda
 
 
 def parser():
     argv = dict()
     for i in sys.argv[1:]:
-        if i[:2] != '--':
-            raise "command samples: [test|train] --command=type"
-        else:
-            lst = i[2:].split('=')
-            argv[lst[0]] = 'None' if len(lst) <= 1 else lst[1]
+        assert i[:2] == "--", "command samples: [test | train] - -command = type"
+        lst = i[2:].split('=')
+        argv[lst[0]] = 'None' if len(lst) <= 1 else lst[1]
     return argv
 
 
@@ -31,10 +30,10 @@ def train(argv):
     print("loading vocab")
     vocab = Vocab.load("vocab.json")
     print("load vocab success")
-    model = NMT(int(argv["embed-size"]), int(argv["hidden-size"]), vocab, float(argv["dropout-rate"]))
+    device = 'cuda' if cuda.is_available() else 'cpu'
+    model = NMT(int(argv["embed-size"]), int(argv["hidden-size"]),
+                vocab, float(argv["dropout-rate"], device))
     model.train()
-
-    device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     print("device: ", device)
 
@@ -52,11 +51,12 @@ def train(argv):
             loss.backward()
             optimizer.zero_grad()
             optimizer.step()
-
             if cnt % 20 == 0:
-                print("epoch: {} cnt: {}, loss: {}".format(epoch, cnt, loss.mean()))
+                print("epoch: {} cnt: {}, loss: {}".format(
+                    epoch, cnt, loss.mean()))
             cnt = cnt + 1
     model.save("model.bin")
+
 
 def main():
     argv = parser()
