@@ -20,7 +20,6 @@ def parser():
 
 
 def test(argv):
-
     pass
 
 
@@ -39,7 +38,9 @@ def train(argv):
 
     print("device: ", device)
 
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.0001)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
+
+    model = model.to(device)
 
     epoches = int(argv['epoches'])
     epoch = 0
@@ -47,13 +48,15 @@ def train(argv):
         epoch = epoch + 1
         cnt = 0
         for src_sents, tgt_sents in batch_iter(train_data, batch_size):
+            loss = model(src_sents, tgt_sents)
+            loss.backward()
             optimizer.zero_grad()
-            pred = model(src_sents, tgt_sents)
-            # print(target_padded.shape)
-            # print(pred.shape)
-            # loss = nn.CrossEntropyLoss(pred, tgt_sents)
-            break
-        break
+            optimizer.step()
+
+            if cnt % 20 == 0:
+                print("epoch: {} cnt: {}, loss: {}".format(epoch, cnt, loss.mean()))
+            cnt = cnt + 1
+    model.save("model.bin")
 
 def main():
     argv = parser()
@@ -63,6 +66,7 @@ def main():
         test(argv)
     else:
         raise "wrong command"
+
 
 if __name__ == "__main__":
     main()

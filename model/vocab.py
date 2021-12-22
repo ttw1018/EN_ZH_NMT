@@ -62,10 +62,10 @@ class VocabEntry(object):
         else:
             return [self.id2word[index] for index in indices]
 
-    def to_input_tensor(self, sentences):
+    def to_input_tensor(self, sentences, device):
         word_ids = self.words2indices(sentences)
         pad_sents(word_ids, self['<pad>'])
-        sent_var = torch.tensor(word_ids, dtype=torch.long)
+        sent_var = torch.tensor(word_ids, dtype=torch.long, device=device)
         return sent_var
 
     @staticmethod
@@ -91,7 +91,6 @@ class Vocab(object):
 
     @staticmethod
     def build(src_sents, tgt_sents, vocab_size, freq_cutoff):
-        assert len(src_sents) == len(tgt_sents)
         print('init source vocab')
         src = VocabEntry.from_corpus(src_sents, vocab_size, freq_cutoff)
         print('init target vocab')
@@ -99,7 +98,7 @@ class Vocab(object):
         return Vocab(src, tgt)
 
     def save(self, file_path):
-        json.dump(dict(src_word2id=self.src.word2id, tgt_word2id=self.tgt.word2id), open(file_path, 'w'), indent=2)
+        json.dump(dict(src_word2id=self.src.word2id, tgt_word2id=self.tgt.word2id), open(file_path, 'w', encoding='utf-8'), indent=2)
 
     @staticmethod
     def load(file_path):
@@ -116,13 +115,15 @@ def read_corpus(file_path):
     src_sents = []
     tgt_sents = []
     fin = open(file_path, 'r', encoding='utf').readlines()
-    cnt = 100
+    sp1 = smp.SentencePieceProcessor(model_file='source.model')
+    sp2 = smp.SentencePieceProcessor(model_file='target.model')
+    cnt = 100000
     for f in fin:
         line = json.loads(f)
-        src = nltk.word_tokenize(line["english"])
-        tgt = nltk.word_tokenize(line["chinese"])
-        src_sents.append(src)
-        tgt_sents.append(["<s>"] + tgt + ["<\s>"])
+        src = line["english"]
+        tgt = line["chinese"]
+        src_sents.append(sp1.EncodeAsPieces(src))
+        tgt_sents.append(["<s>"] + sp2.EncodeAsPieces(tgt) + ["<\s>"])
         cnt = cnt - 1
         if cnt <= 0:
             break
@@ -133,17 +134,11 @@ def get_vocab_list(file_path, source, vocab_size):
     smp.SentencePieceTrainer.Train(input=file_path, model_prefix=source, vocab_size=vocab_size)
     sp = smp.SentencePieceProcessor()
     sp.Load("{}.model".format(source))
-    print(type(sp))
     sp_list = [sp.IdToPiece(id) for id in range(vocab_size)]
-    print(sp_list[:20])
     return sp_list
 
 if __name__ == '__main__':
-    # read_corpus("E:\Datasets\translation2019zh\translation2019zh_train.json")
-    # get_vocab_list("E:\\Datasets\\translation2019zh\\translation2019zh_train.json", "source", 10000)
-
-    src_sents, tgt_sents = read_corpus("/Users/tianwentang/Datasets/translation2019zh/translation2019zh_train.json")
-    print(len(src_sents))
-    vocab = Vocab.build(src_sents, tgt_sents, 10000, 3)
-    print("generate vocabulary, source %d words, target word %d" % (len(vocab.src), len(vocab.tgt)))
-    vocab.save("vocab.json")
+    src_sent = get_vocab_list("E://Datasets//translation2019zh//en.txt", "source", 20000)
+    tgt_sent = get_vocab_list("E://Datasets//translation2019zh//zh.txt", "target", 20000)
+    Vocab = Vocab.build(src_sent, tgt_sent, 10000, 2)
+    Vocab.save("vocab.json")

@@ -37,7 +37,7 @@ class NMT(nn.Module):
     def decode(self, enc_hidden, enc_masks, dec_init_state, target_padded):
         # target_padded = target_padded[:-1]
         batch_size = enc_hidden.shape[0]
-        o_prev = torch.zeros(batch_size, self.hidden_size)
+        o_prev = torch.zeros(batch_size, self.hidden_size, device="cuda")
         combined_outputs = []
         enc_hidden_proj = self.att_projection(enc_hidden)
         Y = self.model_embedding.target(target_padded)
@@ -69,24 +69,50 @@ class NMT(nn.Module):
 
     def forward(self, source, target):
         source_lengths = [len(s) for s in source]
-        source_padded = self.vocab.src.to_input_tensor(source)
-        target_padded = self.vocab.tgt.to_input_tensor(target)
+        source_padded = self.vocab.src.to_input_tensor(source, "cuda")
+        target_padded = self.vocab.tgt.to_input_tensor(target, "cuda")
         enc_hidden, dec_init_state = self.encode(source_padded, source_lengths)
         enc_masks = self.generate_sent_masks(enc_hidden, source_lengths)
         combined_outputs = self.decode(
             enc_hidden, enc_masks, dec_init_state, target_padded)
         P = self.target_vocab_projection(combined_outputs)
-        P = P.permute(1, 0, 2)
-        P = P.float()
-        source_padded = source_padded.float()
-        print(P.dtype, source_padded.dtype)
-        loss = nn.CrossEntropyLoss(P, source_padded)
-        print(loss)
-        return P
+        P = torch.permute(P, (1, 2, 0))
+        loss = nn.CrossEntropyLoss()(P, target_padded)
+        return loss
 
     def generate_sent_masks(self, enc_hidden, source_lengths):
         enc_masks = torch.zeros(enc_hidden.size(
-            0), enc_hidden.size(1), dtype=torch.float)
+            0), enc_hidden.size(1), dtype=torch.float, device="cuda")
         for e_id, src_len in enumerate(source_lengths):
             enc_masks[e_id, 1:src_len:] = 1
         return enc_masks
+
+
+    @staticmethod
+    def load(model_path: str):
+        """ Load the model from a file.
+        @param model_path (str): path to model
+        """
+        params = torch.load(
+            model_path, map_location=lambda storage, loc: storage)
+        args = params['args']
+        model = NMT(vocab=params['vocab'], **args)
+        model.load_state_dict(params['state_dict'])
+
+        return model
+
+
+    def save(self, path: str):
+        """ Save the odel to a file.
+        @param path (str): path to the model
+        """
+        print('save model parameters to [%s]' % path, file=sys.stderr)
+
+        params = {
+            'args': dict(embed_size=self.model_embeddings.embed_size, hidden_size=self.hidden_size,
+                         dropout_rate=self.dropout_rate),
+            'vocab': self.vocab,
+            'state_dict': self.state_dict()
+        }
+
+        torch.save(params, path)
