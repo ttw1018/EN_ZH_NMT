@@ -10,3 +10,5 @@ def batch_iter(data, batch_size):
     total = len(data[0])
     for i in range(0, total, batch_size):
         yield data[0][i : min(total, i + batch_size)], data[1][i : min(total, i + batch_size)]
+
+

@@ -1,3 +1,5 @@
 .idea/
 test.py
 data
+*.bin
+*.json
